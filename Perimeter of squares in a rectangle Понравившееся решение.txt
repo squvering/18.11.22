@@ -1,0 +1,71 @@
+import java.math.BigInteger;
+import static java.math.BigInteger.*;
+
+/**
+ * The problem is really to find the sum of the first n Fibonacci Numbers (starting at n=0), then multiplying that by
+ * four to find the sum of perimeters of squares formed by those numbers.
+ */
+public class SumFct {
+    /**
+     * Helper class for {@link #fastPerimeter}.
+     *
+     * Represents a 2x2 Matrix capable of fast exponentiation (m^n in log n matrix multiplications).
+     */
+    private static class Matrix2x2 {
+        private static final Matrix2x2 identity = new Matrix2x2(new BigInteger[] { ONE, ZERO, ZERO, ONE });
+
+        public final BigInteger[] elements;
+
+        public Matrix2x2(BigInteger[] elements) {
+            this.elements = elements;  // No need for copy because BigInteger is immutable.
+        }
+
+        private static Matrix2x2 multiply(Matrix2x2 m1, Matrix2x2 m2) {
+            final BigInteger[] a = m1.elements;
+            final BigInteger[] b = m2.elements;
+            return new Matrix2x2(new BigInteger[] {
+                    a[0].multiply(b[0]).add(a[1].multiply(b[2])), a[0].multiply(b[1]).add(a[1].multiply(b[3])),
+                    a[2].multiply(b[0]).add(a[3].multiply(b[2])), a[2].multiply(b[1]).add(a[3].multiply(b[3]))
+            });
+        }
+
+        public static Matrix2x2 exponentiate(Matrix2x2 m, long exponent) {
+            if (exponent == 0) {
+                return identity;
+            }
+            else if (exponent % 2 == 0) {
+                return exponentiate(multiply(m, m), exponent / 2);
+            }
+            else {
+                return multiply(exponentiate(m, exponent - 1), m);
+            }
+        }
+    }
+
+    /**
+     * Uses the fact that the sum of the n first Fibonacci numbers is the (n+2) Fibonacci number minus one. This can be
+     * proven inductively but is not proven here.
+     *
+     * Then applies a fast matrix exponentiation algorithm for finding the nth Fibonacci number.
+     *
+     * Runs in O(log n) matrix multiplications but see time complexity notes on {@link #perimeter}.
+     * The multiplications run in superlinear time in number of digits, depending on BigInteger's multiplication
+     * algorithm.
+     */
+    public static BigInteger perimeter(BigInteger n) {
+        // m * v = w
+        // | a b | * | e | = | f     |
+        // | c d |   | f |   | e + f |
+
+        // m =
+        // | 0 1 |
+        // | 1 1 |
+        final Matrix2x2 m = new Matrix2x2(new BigInteger[] { ZERO, ONE, ONE, ONE });
+        // Find fib(n) = first element of (m ^ n) * w
+        final Matrix2x2 me = Matrix2x2.exponentiate(m, n.longValue() + 2);
+        // Note that me_2_2 is multiplied by 1 to get the first element of the Fibonacci vector (w) above.
+        // This means we do not need to multiply our exponentiated matrix by a vector to get the nth fib number.
+        final BigInteger fibSum = me.elements[3].subtract(ONE);
+        return fibSum.multiply(BigInteger.valueOf(4));
+    }
+}
